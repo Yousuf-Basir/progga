@@ -1,0 +1,41 @@
+{
+  "name": "progga",
+  "version": "1.0.0",
+  "description": "Generate comprehensive project documentation for AI assistants - Share your entire codebase context in one markdown file",
+  "main": "index.js",
+  "bin": {
+    "progga": "./index.js"
+  },
+  "scripts": {
+    "test": "node index.js ."
+  },
+  "keywords": [
+    "ai",
+    "documentation",
+    "generator",
+    "markdown",
+    "project",
+    "context",
+    "chatgpt",
+    "claude",
+    "gemini",
+    "llm",
+    "codebase",
+    "snapshot",
+    "cli",
+    "bengali"
+  ],
+  "author": "Your Name yousufbasir@outlook.com",
+  "license": "MIT",
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Yousuf-Basir/progga"
+  },
+  "bugs": {
+    "url": "https://github.com/Yousuf-Basir/progga/issues"
+  },
+  "homepage": "https://github.com/Yousuf-Basir/progga#readme"
+}
