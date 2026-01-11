@@ -26,7 +26,6 @@ const IGNORE_PATTERNS = new Set([
   'package-lock.json',
   'yarn.lock',
   'pnpm-lock.yaml',
-  'PROJECT_DOCUMENTATION.md'
 ]);
 
 // File extensions to exclude
@@ -275,6 +274,16 @@ function generateDocumentation(projectPath, outputFile) {
   
   console.log(`Generating documentation for: ${absProjectPath}`);
   console.log(`Output file: ${outputFile}`);
+  
+  // Delete existing output file if it exists
+  if (fs.existsSync(outputFile)) {
+    try {
+      fs.unlinkSync(outputFile);
+      console.log(`✓ Deleted existing file: ${outputFile}`);
+    } catch (err) {
+      console.warn(`Warning: Could not delete existing file: ${err.message}`);
+    }
+  }
   
   const projectName = path.basename(absProjectPath);
   let output = '';
