@@ -26,6 +26,7 @@ const IGNORE_PATTERNS = new Set([
   'package-lock.json',
   'yarn.lock',
   'pnpm-lock.yaml',
+  'PROJECT_DOCUMENTATION.md'
 ]);
 
 // File extensions to exclude
