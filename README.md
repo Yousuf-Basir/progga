@@ -25,7 +25,7 @@ Upload one file, understand the entire project. **progga** creates a complete pr
 
 ### Using npx (Recommended - No Installation!)
 ```bash
-npx progga
+npx progga@latest
 ```
 
 ### Global Installation
@@ -39,24 +39,24 @@ npm install -g progga
 
 Generate documentation for current directory:
 ```bash
-npx progga
+npx progga@latest
 ```
 
 This creates `PROJECT_DOCUMENTATION.md` in your current directory.
 
 ### Specify Project Path
 ```bash
-npx progga /path/to/your/project
+npx progga@latest /path/to/your/project
 ```
 
 ### Custom Output File
 ```bash
-npx progga . my-ai-context.md
+npx progga@latest . my-ai-context.md
 ```
 
 ### Full Example
 ```bash
-npx progga ./my-app ./docs/ai-context.md
+npx progga@latest ./my-app ./docs/ai-context.md
 ```
 
 ## 💡 How to Use with AI Assistants
