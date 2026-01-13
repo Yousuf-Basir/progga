@@ -1,6 +1,18 @@
 class ProjectProfile {
   constructor(projectRoot) {
     this.projectRoot = projectRoot;
+    this.cliIgnorePaths = [];
+    this.cliIgnoreExtensions = [];
+  }
+
+  applyCliIgnores(list) {
+    for (const item of list) {
+      if (item.startsWith('.')) {
+        this.cliIgnoreExtensions.push(item);
+      } else {
+        this.cliIgnorePaths.push(item);
+      }
+    }
   }
 
   get name() {
@@ -9,12 +21,12 @@ class ProjectProfile {
 
   /** Paths to fully ignore */
   ignorePaths() {
-    return [];
+    return this.cliIgnorePaths;
   }
 
   /** Extensions to ignore */
   ignoreExtensions() {
-    return [];
+    return this.cliIgnoreExtensions;
   }
 
   /** Binary extensions */

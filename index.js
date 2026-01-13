@@ -12,6 +12,10 @@ const ProjectTypeDetector = require('./core/ProjectTypeDetector');
 const PresetSelector = require('./core/PresetSelector');
 const Spinner = require('./core/Spinner');
 
+
+const CLI_IGNORE_PATHS = new Set();
+const CLI_IGNORE_EXTENSIONS = new Set();
+
 /**
  * Check if path should be ignored
  */
@@ -20,13 +24,19 @@ function shouldIgnore(filePath, basePath, profile) {
   const parts = relativePath.split(path.sep);
 
   for (const part of parts) {
-    if (profile.ignorePaths().includes(part)) {
+    if (
+      profile.ignorePaths().includes(part) ||
+      CLI_IGNORE_PATHS.has(part)
+    ) {
       return true;
     }
   }
 
   const ext = path.extname(filePath);
-  if (profile.ignoreExtensions().includes(ext)) {
+  if (
+    profile.ignoreExtensions().includes(ext) ||
+    CLI_IGNORE_EXTENSIONS.has(ext)
+  ) {
     return true;
   }
 
@@ -301,6 +311,7 @@ function generateDocumentation(projectPath, outputFile, profile) {
 
 // Main execution
 async function main() {
+  let cliIgnores = [];
   const args = process.argv.slice(2);
 
   let projectPath = '.';
@@ -310,13 +321,22 @@ async function main() {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
 
-    if (arg === '--project-type' || arg === '--preset') {
-      projectType = args[i + 1];
-      i++;
-    } else if (!projectPath) {
-      projectPath = arg;
-    } else if (!outputFile) {
-      outputFile = arg;
+    if (arg === '--ignore' || arg === '-i') {
+      const value = args[i + 1];
+      if (value) {
+        value
+          .split(',')
+          .map(v => v.trim())
+          .filter(Boolean)
+          .forEach(item => {
+            if (item.startsWith('.')) {
+              CLI_IGNORE_EXTENSIONS.add(item);
+            } else {
+              CLI_IGNORE_PATHS.add(item);
+            }
+          });
+        i++;
+      }
     }
   }
 
@@ -342,8 +362,14 @@ async function main() {
     profile = ProfileRegistry.fallback(projectPath);
   }
 
+  if (cliIgnores.length) {
+    profile.applyCliIgnores(cliIgnores);
+    console.log(`🚫 CLI ignores applied: ${cliIgnores.join(', ')}`);
+  }
+
   console.log(`Using profile: ${profile.name}`);
   generateDocumentation(projectPath, outputFile, profile);
+
 }
 
 main();
