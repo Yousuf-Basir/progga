@@ -7,65 +7,27 @@
 
 const fs = require('fs');
 const path = require('path');
+const ProfileRegistry = require('./profiles/ProfileRegistry');
 
-// Configure what to ignore
-const IGNORE_PATTERNS = new Set([
-  'node_modules',
-  '.git',
-  '__pycache__',
-  '.vscode',
-  'dist',
-  'build',
-  '.next',
-  'venv',
-  'env',
-  '.env',
-  'coverage',
-  '.pytest_cache',
-  '.DS_Store',
-  'package-lock.json',
-  'yarn.lock',
-  'pnpm-lock.yaml',
-]);
-
-// File extensions to exclude
-const IGNORE_EXTENSIONS = new Set([
-  '.pyc',
-  '.pyo',
-  '.so',
-  '.dylib',
-  '.exe',
-  '.dll',
-]);
-
-// Binary file extensions to skip
-const BINARY_EXTENSIONS = new Set([
-  '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg',
-  '.pdf', '.zip', '.tar', '.gz', '.rar',
-  '.mp4', '.mp3', '.wav',
-  '.woff', '.woff2', '.ttf', '.eot',
-]);
 
 /**
  * Check if path should be ignored
  */
-function shouldIgnore(filePath, basePath) {
+function shouldIgnore(filePath, basePath, profile) {
   const relativePath = path.relative(basePath, filePath);
   const parts = relativePath.split(path.sep);
-  
-  // Check each part of the path
+
   for (const part of parts) {
-    if (IGNORE_PATTERNS.has(part)) {
+    if (profile.ignorePaths().includes(part)) {
       return true;
     }
   }
-  
-  // Check file extension
+
   const ext = path.extname(filePath);
-  if (IGNORE_EXTENSIONS.has(ext)) {
+  if (profile.ignoreExtensions().includes(ext)) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -88,7 +50,7 @@ function isDirectoryEmpty(directory, basePath) {
 /**
  * Generate tree structure recursively
  */
-function generateTree(directory, prefix = '', isLast = true, basePath = null) {
+function generateTree( directory, prefix = '', isLast = true, basePath = null, profile ) {
   if (basePath === null) {
     basePath = directory;
   }
@@ -103,7 +65,7 @@ function generateTree(directory, prefix = '', isLast = true, basePath = null) {
     });
     
     // Filter ignored items
-    items = items.filter(item => !shouldIgnore(item.fullPath, basePath));
+    items = items.filter(item => !shouldIgnore(item.fullPath, basePath, profile));
     
     // Sort: directories first, then alphabetically
     items.sort((a, b) => {
@@ -124,7 +86,7 @@ function generateTree(directory, prefix = '', isLast = true, basePath = null) {
           treeLines.push(`${prefix}${connector}${item.name}/ (empty)`);
         } else {
           treeLines.push(`${prefix}${connector}${item.name}/`);
-          const subtree = generateTree(item.fullPath, prefix + extension, isLastItem, basePath);
+          const subtree = generateTree( item.fullPath, prefix + extension, isLastItem, basePath, profile );
           treeLines.push(...subtree);
         }
       } else {
@@ -147,28 +109,25 @@ function generateTree(directory, prefix = '', isLast = true, basePath = null) {
 /**
  * Check if file is binary
  */
-function isBinaryFile(filePath) {
+function isBinaryFile(filePath, profile) {
   const ext = path.extname(filePath);
-  if (BINARY_EXTENSIONS.has(ext)) {
+  if (profile.binaryExtensions().includes(ext)) {
     return true;
   }
-  
+
   try {
     const buffer = Buffer.alloc(1024);
     const fd = fs.openSync(filePath, 'r');
     const bytesRead = fs.readSync(fd, buffer, 0, 1024, 0);
     fs.closeSync(fd);
-    
-    // Check for null bytes
+
     for (let i = 0; i < bytesRead; i++) {
-      if (buffer[i] === 0) {
-        return true;
-      }
+      if (buffer[i] === 0) return true;
     }
-  } catch (err) {
+  } catch {
     return true;
   }
-  
+
   return false;
 }
 
@@ -231,40 +190,36 @@ function getLanguageFromExtension(filePath) {
 /**
  * Collect all files recursively
  */
-function collectFiles(directory, basePath) {
+function collectFiles(directory, basePath, profile) {
   const files = [];
-  
+
   try {
     const items = fs.readdirSync(directory);
-    
+
     for (const item of items.sort()) {
       const fullPath = path.join(directory, item);
-      
-      if (shouldIgnore(fullPath, basePath)) {
-        continue;
-      }
-      
+
+      if (shouldIgnore(fullPath, basePath, profile)) continue;
+
       const stats = fs.statSync(fullPath);
-      
+
       if (stats.isFile()) {
-        if (!isBinaryFile(fullPath)) {
+        if (!isBinaryFile(fullPath, profile)) {
           files.push(fullPath);
         }
       } else if (stats.isDirectory()) {
-        files.push(...collectFiles(fullPath, basePath));
+        files.push(...collectFiles(fullPath, basePath, profile));
       }
     }
-  } catch (err) {
-    // Permission error or other issues
-  }
-  
+  } catch {}
+
   return files;
 }
 
 /**
  * Generate complete documentation markdown file
  */
-function generateDocumentation(projectPath, outputFile) {
+function generateDocumentation(projectPath, outputFile, profile) {
   const absProjectPath = path.resolve(projectPath);
   
   if (!fs.existsSync(absProjectPath)) {
@@ -298,7 +253,7 @@ function generateDocumentation(projectPath, outputFile) {
   output += '```\n';
   output += `${projectName}/\n`;
   
-  const treeLines = generateTree(absProjectPath, '', true, absProjectPath);
+  const treeLines = generateTree(absProjectPath, '', true, absProjectPath, profile);
   for (const line of treeLines) {
     output += `${line}\n`;
   }
@@ -309,7 +264,7 @@ function generateDocumentation(projectPath, outputFile) {
   // Write file contents
   output += '## 📄 File Contents\n\n';
   
-  const files = collectFiles(absProjectPath, absProjectPath);
+  const files = collectFiles(absProjectPath, absProjectPath, profile);
   
   for (let i = 0; i < files.length; i++) {
     const filePath = files[i];
@@ -340,11 +295,16 @@ function generateDocumentation(projectPath, outputFile) {
 // Main execution
 function main() {
   const args = process.argv.slice(2);
-  
+
   const projectPath = args[0] || '.';
   const outputFile = args[1] || 'PROJECT_DOCUMENTATION.md';
-  
-  generateDocumentation(projectPath, outputFile);
+
+  // future: parse --project-type
+  const profile =
+    ProfileRegistry.getByName(null, projectPath) ||
+    ProfileRegistry.fallback(projectPath);
+
+  generateDocumentation(projectPath, outputFile, profile);
 }
 
 main();
