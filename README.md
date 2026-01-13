@@ -1,110 +1,124 @@
 # progga (প্রজ্ঞা)
 
-> *Progga* means "wisdom" or "insight" in Bengali
+**Progga** is a CLI tool that generates a single Markdown file representing the essential context of a software project.
+The output is optimized for uploading to AI assistants (ChatGPT, Claude, Gemini) so they can understand a project quickly and accurately.
 
-Generate comprehensive project documentation in a single markdown file - perfect for sharing your entire codebase context with AI assistants like ChatGPT, Claude, or Gemini.
+---
 
-## 🎯 Purpose
+## Getting Started
 
-Upload one file, understand the entire project. **progga** creates a complete project snapshot that AI assistants can instantly comprehend, making it easy to:
+### Run with npx (recommended)
 
-- 💬 Get AI help with your entire codebase
-- 📤 Share project context without multiple file uploads
-- 🤖 Enable ChatGPT/Claude/Gemini to understand your project structure
-- 📚 Create comprehensive documentation snapshots
-
-## ✨ Features
-
-- 📁 Visual folder tree structure
-- 📄 All file contents with syntax highlighting
-- 🚫 Automatically ignores dependencies and build artifacts
-- ⚡ One command, one file, complete context
-- 🎯 Optimized for AI consumption
-
-## 🚀 Installation
-
-### Using npx (Recommended - No Installation!)
 ```bash
 npx progga@latest
 ```
 
-### Global Installation
+This generates a file named:
+
+```
+PROJECT_DOCUMENTATION.md
+```
+
+in the current directory.
+
+### Run on a specific project
+
 ```bash
-npm install -g progga
+progga /path/to/project
 ```
 
-## 📖 Usage
+### Custom output file
 
-### Basic Usage
-
-Generate documentation for current directory:
 ```bash
-npx progga@latest
+progga . my-ai-context.md
 ```
 
-This creates `PROJECT_DOCUMENTATION.md` in your current directory.
+---
 
-### Specify Project Path
+## How Progga Works (Short Example)
+
+Given a project like:
+
+```
+my-app/
+├── src/
+│   └── index.js
+├── package.json
+├── node_modules/
+└── build/
+```
+
+Progga generates a single Markdown file containing:
+
+* A clean folder tree (excluding `node_modules`, `build`, etc.)
+* The contents of relevant source files
+* Proper code blocks with language hints
+
+Example output structure:
+
+````markdown
+# Project Documentation: my-app
+
+## Folder Structure
+my-app/
+├── src/
+│   └── index.js
+├── package.json
+
+## File Contents
+### src/index.js
+```js
+// file content here
+````
+
+You can upload this file directly to an AI and ask questions about the project.
+
+## Project Presets
+
+Progga supports project-type presets that control what files are included.
+
+Currently supported:
+- `generic` (default)
+- `flutter` (Android, iOS, Web, Windows, macOS, Linux)
+
+If no preset is provided, Progga attempts to detect the project type and asks which preset to use.
+
 ```bash
-npx progga@latest /path/to/your/project
-```
+progga --preset flutter
+````
 
-### Custom Output File
-```bash
-npx progga@latest . my-ai-context.md
-```
+---
 
-### Full Example
-```bash
-npx progga@latest ./my-app ./docs/ai-context.md
-```
+## Contributing
 
-## 💡 How to Use with AI Assistants
+Contributions are welcome.
 
-1. Run `npx progga` in your project directory
-2. Upload the generated `PROJECT_DOCUMENTATION.md` to ChatGPT, Claude, or Gemini
-3. Ask the AI anything about your project!
+Good areas to contribute:
 
-Example prompts after upload:
-- "Review my code architecture"
-- "Find potential bugs"
-- "Suggest improvements"
-- "Explain how this project works"
-- "Help me add a new feature"
+* New project presets (Node.js, Python, Go, etc.)
+* Improving Flutter include-only rules
+* Performance improvements
+* Better project auto-detection
+* Documentation and examples
 
-## 🚫 What Gets Ignored
+### How to contribute
 
-Automatically excludes:
-- `node_modules/`, `.git/`
-- Build directories (`dist/`, `build/`, `.next/`)
-- Virtual environments (`venv/`, `env/`)
-- Cache directories
-- Lock files
-- Binary files (images, videos, fonts)
+1. Fork the repository
+2. Create a feature branch
+3. Make focused changes
+4. Open a pull request with a clear description
 
-## 📊 Output Format
-```markdown
-# Project Documentation: your-project
+Opening an issue to discuss ideas is also encouraged.
 
-## 📁 Folder Structure
-[Visual tree of all files and folders]
+---
 
-## 📄 File Contents
-[Complete contents of each file with syntax highlighting]
-```
+## Requirements
 
-## 🌍 Requirements
+* Node.js 12 or newer (Node 18+ recommended)
 
-- Node.js >= 12.0.0
+---
 
-## 📝 License
+## License
 
-MIT
+MIT License
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 💖 Name Origin
-
-**Progga** (প্রজ্ঞা) is a Bengali word meaning "wisdom" or "insight" - representing the wisdom you share with AI assistants about your codebase.

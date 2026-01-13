@@ -8,7 +8,9 @@
 const fs = require('fs');
 const path = require('path');
 const ProfileRegistry = require('./profiles/ProfileRegistry');
-
+const ProjectTypeDetector = require('./core/ProjectTypeDetector');
+const PresetSelector = require('./core/PresetSelector');
+const Spinner = require('./core/Spinner');
 
 /**
  * Check if path should be ignored
@@ -50,43 +52,43 @@ function isDirectoryEmpty(directory, basePath) {
 /**
  * Generate tree structure recursively
  */
-function generateTree( directory, prefix = '', isLast = true, basePath = null, profile ) {
+function generateTree(directory, prefix = '', isLast = true, basePath = null, profile) {
   if (basePath === null) {
     basePath = directory;
   }
-  
+
   const treeLines = [];
-  
+
   try {
     let items = fs.readdirSync(directory).map(name => {
       const fullPath = path.join(directory, name);
       const stats = fs.statSync(fullPath);
       return { name, fullPath, isDir: stats.isDirectory() };
     });
-    
+
     // Filter ignored items
     items = items.filter(item => !shouldIgnore(item.fullPath, basePath, profile));
-    
+
     // Sort: directories first, then alphabetically
     items.sort((a, b) => {
       if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
     });
-    
+
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const isLastItem = i === items.length - 1;
-      
+
       // Tree characters
       const connector = isLastItem ? '└── ' : '├── ';
       const extension = isLastItem ? '    ' : '│   ';
-      
+
       if (item.isDir) {
         if (isDirectoryEmpty(item.fullPath, basePath)) {
           treeLines.push(`${prefix}${connector}${item.name}/ (empty)`);
         } else {
           treeLines.push(`${prefix}${connector}${item.name}/`);
-          const subtree = generateTree( item.fullPath, prefix + extension, isLastItem, basePath, profile );
+          const subtree = generateTree(item.fullPath, prefix + extension, isLastItem, basePath, profile);
           treeLines.push(...subtree);
         }
       } else {
@@ -102,7 +104,7 @@ function generateTree( directory, prefix = '', isLast = true, basePath = null, p
   } catch (err) {
     // Permission error or other issues
   }
-  
+
   return treeLines;
 }
 
@@ -140,7 +142,7 @@ function readFileContent(filePath) {
     if (stats.size === 0) {
       return '(empty file)';
     }
-    
+
     return fs.readFileSync(filePath, 'utf-8');
   } catch (err) {
     if (err.message.includes('invalid')) {
@@ -182,7 +184,7 @@ function getLanguageFromExtension(filePath) {
     '.rb': 'ruby',
     '.php': 'php',
   };
-  
+
   const ext = path.extname(filePath);
   return extMap[ext] || '';
 }
@@ -211,7 +213,7 @@ function collectFiles(directory, basePath, profile) {
         files.push(...collectFiles(fullPath, basePath, profile));
       }
     }
-  } catch {}
+  } catch { }
 
   return files;
 }
@@ -221,15 +223,15 @@ function collectFiles(directory, basePath, profile) {
  */
 function generateDocumentation(projectPath, outputFile, profile) {
   const absProjectPath = path.resolve(projectPath);
-  
+
   if (!fs.existsSync(absProjectPath)) {
     console.error(`Error: Path '${absProjectPath}' does not exist`);
     process.exit(1);
   }
-  
+
   console.log(`Generating documentation for: ${absProjectPath}`);
   console.log(`Output file: ${outputFile}`);
-  
+
   // Delete existing output file if it exists
   if (fs.existsSync(outputFile)) {
     try {
@@ -239,43 +241,48 @@ function generateDocumentation(projectPath, outputFile, profile) {
       console.warn(`Warning: Could not delete existing file: ${err.message}`);
     }
   }
-  
+
   const projectName = path.basename(absProjectPath);
   let output = '';
-  
+
   // Write header
   output += `# Project Documentation: ${projectName}\n\n`;
   output += `**Generated from:** \`${absProjectPath}\`\n\n`;
   output += '---\n\n';
-  
+
   // Write folder structure
   output += '## 📁 Folder Structure\n\n';
   output += '```\n';
   output += `${projectName}/\n`;
-  
+
+  const treeSpinner = new Spinner('Generating folder structure');
   const treeLines = generateTree(absProjectPath, '', true, absProjectPath, profile);
+  treeSpinner.succeed('Folder structure generated');
+
   for (const line of treeLines) {
     output += `${line}\n`;
   }
-  
+
   output += '```\n\n';
   output += '---\n\n';
-  
+
   // Write file contents
   output += '## 📄 File Contents\n\n';
-  
+
+  const fileSpinner = new Spinner('Collecting files');
   const files = collectFiles(absProjectPath, absProjectPath, profile);
-  
+  fileSpinner.succeed(`Collected ${files.length} files`);
+
   for (let i = 0; i < files.length; i++) {
     const filePath = files[i];
     const relPath = path.relative(absProjectPath, filePath);
     console.log(`Processing (${i + 1}/${files.length}): ${relPath}`);
-    
+
     output += `### \`${relPath}\`\n\n`;
-    
+
     const content = readFileContent(filePath);
     const language = getLanguageFromExtension(filePath);
-    
+
     output += `\`\`\`${language}\n`;
     output += content;
     if (!content.endsWith('\n')) {
@@ -284,26 +291,58 @@ function generateDocumentation(projectPath, outputFile, profile) {
     output += '```\n\n';
     output += '---\n\n';
   }
-  
+
   // Write to file
   fs.writeFileSync(outputFile, output, 'utf-8');
-  
+
   console.log(`\n✅ Documentation generated successfully: ${outputFile}`);
   console.log(`📊 Total files processed: ${files.length}`);
 }
 
 // Main execution
-function main() {
+async function main() {
   const args = process.argv.slice(2);
 
-  const projectPath = args[0] || '.';
-  const outputFile = args[1] || 'PROJECT_DOCUMENTATION.md';
+  let projectPath = '.';
+  let outputFile = 'PROJECT_DOCUMENTATION.md';
+  let projectType = null;
 
-  // future: parse --project-type
-  const profile =
-    ProfileRegistry.getByName(null, projectPath) ||
-    ProfileRegistry.fallback(projectPath);
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
 
+    if (arg === '--project-type' || arg === '--preset') {
+      projectType = args[i + 1];
+      i++;
+    } else if (!projectPath) {
+      projectPath = arg;
+    } else if (!outputFile) {
+      outputFile = arg;
+    }
+  }
+
+  let profile = ProfileRegistry.getByName(projectType, projectPath);
+
+  if (!profile) {
+    const detector = new ProjectTypeDetector(projectPath);
+    const detections = detector.detect();
+
+    const flutterSignal = detections.find(d => d.type === 'flutter');
+
+    if (flutterSignal && process.stdin.isTTY) {
+      console.log('');
+      console.log(`Detected project type: ${flutterSignal.type}`);
+      console.log('');
+
+      const selectedPreset = await PresetSelector.choose(flutterSignal.type);
+      profile = ProfileRegistry.getByName(selectedPreset, projectPath);
+    }
+  }
+
+  if (!profile) {
+    profile = ProfileRegistry.fallback(projectPath);
+  }
+
+  console.log(`Using profile: ${profile.name}`);
   generateDocumentation(projectPath, outputFile, profile);
 }
 

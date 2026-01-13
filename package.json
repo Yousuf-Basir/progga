@@ -37,5 +37,10 @@
   "bugs": {
     "url": "https://github.com/Yousuf-Basir/progga/issues"
   },
-  "homepage": "https://github.com/Yousuf-Basir/progga#readme"
+  "homepage": "https://github.com/Yousuf-Basir/progga#readme",
+  "dependencies": {
+    "@inquirer/select": "^5.0.4",
+    "inquirer": "^13.2.0",
+    "ora": "^9.0.0"
+  }
 }
