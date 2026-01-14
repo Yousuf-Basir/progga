@@ -40,7 +40,9 @@
   "homepage": "https://github.com/Yousuf-Basir/progga#readme",
   "dependencies": {
     "@inquirer/select": "^5.0.4",
+    "dotenv": "^17.2.3",
     "inquirer": "^13.2.0",
-    "ora": "^9.0.0"
+    "ora": "^9.0.0",
+    "posthog-node": "^5.20.0"
   }
 }

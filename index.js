@@ -11,6 +11,49 @@ const ProfileRegistry = require('./profiles/ProfileRegistry');
 const ProjectTypeDetector = require('./core/ProjectTypeDetector');
 const PresetSelector = require('./core/PresetSelector');
 const Spinner = require('./core/Spinner');
+const { capture, maybeShowTelemetryNotice } = require('./telemetry');
+const os = require('os');
+
+function handleTelemetryCommand(args) {
+  if (args[0] !== 'telemetry') return false;
+
+  const action = args[1];
+  const configPath = path.join(os.homedir(), '.progga', 'config.json');
+
+  let config = {};
+  try {
+    if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+  } catch { }
+
+  if (action === 'on') {
+    config.telemetry = true;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    console.log('✅ Telemetry enabled');
+    return true;
+  }
+
+  if (action === 'off') {
+    config.telemetry = false;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    console.log('🚫 Telemetry disabled');
+    return true;
+  }
+
+  if (action === 'status') {
+    const enabled = config.telemetry !== false;
+    console.log(
+      enabled
+        ? '📊 Telemetry is enabled'
+        : '🚫 Telemetry is disabled'
+    );
+    return true;
+  }
+
+  console.log('Usage: progga telemetry [on|off|status]');
+  return true;
+}
 
 
 const CLI_IGNORE_PATHS = new Set();
@@ -305,6 +348,10 @@ function generateDocumentation(projectPath, outputFile, profile) {
   // Write to file
   fs.writeFileSync(outputFile, output, 'utf-8');
 
+  capture('generation_completed', {
+    files_processed: files.length,
+  });
+
   console.log(`\n✅ Documentation generated successfully: ${outputFile}`);
   console.log(`📊 Total files processed: ${files.length}`);
 }
@@ -313,6 +360,19 @@ function generateDocumentation(projectPath, outputFile, profile) {
 async function main() {
   let cliIgnores = [];
   const args = process.argv.slice(2);
+  if (handleTelemetryCommand(args)) {
+    return; // 🔥 EXIT EARLY
+  }
+
+  maybeShowTelemetryNotice();
+
+  capture('cli_run', {
+    args_count: args.length,
+    used_ignore_flag: args.includes('--ignore') || args.includes('-i'),
+    used_preset: args.includes('--preset'),
+    is_tty: process.stdin.isTTY,
+  });
+
 
   let projectPath = '.';
   let outputFile = 'PROJECT_DOCUMENTATION.md';
@@ -367,7 +427,12 @@ async function main() {
     console.log(`🚫 CLI ignores applied: ${cliIgnores.join(', ')}`);
   }
 
+  capture('profile_selected', {
+    profile: profile.name,
+  });
+
   console.log(`Using profile: ${profile.name}`);
+
   generateDocumentation(projectPath, outputFile, profile);
 
 }
