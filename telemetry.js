@@ -116,7 +116,9 @@ function maybeShowTelemetryNotice() {
 
 
 process.on('exit', () => {
-    client.shutdown()
-})
+  try {
+    client?.shutdown();
+  } catch {}
+});
 
 module.exports = { capture, maybeShowTelemetryNotice }
