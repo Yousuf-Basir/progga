@@ -15,6 +15,7 @@ class GenericProfile extends ProjectProfile {
       'build',
       '.next',
       'venv',
+      '.venv',
       'env',
       '.env',
       'coverage',
