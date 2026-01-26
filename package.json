@@ -1,6 +1,6 @@
 {
   "name": "progga",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Generate comprehensive project documentation for AI assistants - Share your entire codebase context in one markdown file",
   "main": "index.js",
   "bin": {
